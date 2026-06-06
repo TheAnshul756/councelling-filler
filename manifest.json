@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "JoSAA Choice Filler",
+  "version": "2.1",
+  "description": "Auto-fills your JoSAA counselling choices in the specified priority order",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": ["*://*.nic.in/*", "*://*.josaa.in/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "JoSAA Choice Filler"
+  }
+}

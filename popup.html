@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 460px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      color: #1a1a1a;
+      background: #f5f5f5;
+      padding: 14px;
+    }
+    h2 { font-size: 15px; font-weight: 700; color: #003366; margin-bottom: 12px; }
+
+    /* ── sort & rank card ── */
+    .rank-card {
+      background: #f0f5ff;
+      border: 1px solid #c0d0f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .rank-card-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #003366;
+      margin-bottom: 4px;
+    }
+    .rank-card-desc {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    #rankBtn {
+      width: 100%;
+      padding: 10px;
+      background: #6a1a8b;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #rankBtn:hover { background: #541472; }
+    #rankBtn:disabled { background: #999; cursor: default; }
+
+    /* ── divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: #aaa;
+      font-size: 11px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #ddd;
+    }
+
+    /* ── manual fill section ── */
+    .hint {
+      background: #e8f0fe;
+      border: 1px solid #b3c6f7;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #1a3c6e;
+      line-height: 1.5;
+    }
+    .hint code {
+      background: #d0e0fb;
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-family: monospace;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    textarea {
+      width: 100%;
+      height: 160px;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      resize: vertical;
+      background: #fff;
+    }
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 8px 0 10px;
+    }
+    .options label {
+      font-weight: normal;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .btn-row { display: flex; gap: 8px; }
+    #fillBtn {
+      flex: 1;
+      padding: 10px;
+      background: #003366;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #fillBtn:hover { background: #00509e; }
+    #fillBtn:disabled { background: #999; cursor: default; }
+    #downloadBtn {
+      padding: 10px 12px;
+      background: #1a6b3c;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #downloadBtn:hover { background: #145530; }
+    #downloadBtn:disabled { background: #999; cursor: default; }
+    #resetBtn {
+      padding: 10px 12px;
+      background: #b71c1c;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #resetBtn:hover { background: #7f0000; }
+    #resetBtn:disabled { background: #999; cursor: default; }
+
+    /* ── log ── */
+    #logArea {
+      display: none;
+      margin-top: 10px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+    #logArea .summary {
+      font-weight: 700;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #eee;
+      font-size: 12px;
+    }
+    .log-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .badge {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+    .badge-added    { background: #d4edda; color: #155724; }
+    .badge-skip     { background: #fff3cd; color: #856404; }
+    .badge-notfound { background: #f8d7da; color: #721c24; }
+    .log-text { color: #333; }
+  </style>
+</head>
+<body>
+  <h2>JoSAA Choice Filler</h2>
+
+  <!-- Sort & Rank -->
+  <div class="rank-card">
+    <div class="rank-card-title">Sort &amp; Rank All Available Choices</div>
+    <div class="rank-card-desc">
+      Reads every college from the JoSAA page, sorts them by closing rank,
+      and opens a new tab where you can drag to reorder before filling.
+    </div>
+    <button id="rankBtn">&#9783; Open Ranker</button>
+  </div>
+
+  <div class="divider">or fill manually</div>
+
+  <!-- Manual fill -->
+  <div class="hint">
+    One choice per line: <code>Institute | Program</code> or <code>InstCode | ProgCode</code>
+  </div>
+  <label for="choiceInput">Choices (highest priority first):</label>
+  <textarea id="choiceInput" placeholder="IIT Bombay | Computer Science and Engineering&#10;IIT Delhi | Electrical Engineering&#10;NIT Trichy | Mechanical Engineering"></textarea>
+
+  <div class="options">
+    <label><input type="checkbox" id="autoAccept" checked /> Auto-accept PwD / restriction dialogs</label>
+    <label><input type="checkbox" id="clearExisting" /> Remove existing filled choices first</label>
+  </div>
+
+  <div class="btn-row">
+    <button id="fillBtn">&#9654; Fill Choices</button>
+    <button id="downloadBtn">&#8595; Download CSV</button>
+    <button id="resetBtn">&#10005; Reset All</button>
+  </div>
+
+  <div id="logArea">
+    <div class="summary" id="summary"></div>
+    <div id="logList"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

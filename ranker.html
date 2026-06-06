@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JoSAA Choice Ranker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      background: #f0f4f8;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── header ── */
+    header {
+      background: #003366;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    header h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
+    #choiceCount { font-size: 12px; opacity: 0.75; white-space: nowrap; }
+
+    /* ── filter bar ── */
+    .filter-bar {
+      background: #1a4a8a;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 49px;
+      z-index: 19;
+    }
+    .filter-bar label {
+      color: #c8d8f0;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .filter-bar select {
+      padding: 5px 8px;
+      border: none;
+      border-radius: 5px;
+      font-size: 13px;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      cursor: pointer;
+    }
+    .filter-bar select option { background: #1a4a8a; color: #fff; }
+    #applyBtn {
+      padding: 6px 16px;
+      background: #fff;
+      color: #003366;
+      border: none;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #applyBtn:hover { background: #e8f0fe; }
+    #applyBtn:disabled { opacity: 0.6; cursor: default; }
+    #matchCount { color: #a8c4e8; font-size: 12px; margin-left: 4px; }
+
+    /* ── help bar ── */
+    .help-bar {
+      background: #e8f0fe;
+      border-bottom: 1px solid #c0d0f0;
+      padding: 7px 24px;
+      font-size: 12px;
+      color: #1a3c6e;
+    }
+
+    /* ── loading ── */
+    #loadingOverlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 12px;
+      color: #555;
+      font-size: 14px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 4px solid #ccc;
+      border-top-color: #003366;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── main ── */
+    main { flex: 1; padding: 20px 24px; overflow-x: auto; }
+
+    /* ── table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      min-width: 680px;
+    }
+    thead th {
+      background: #003366;
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      user-select: none;
+    }
+    thead th.num-col { text-align: right; width: 120px; }
+    thead th.rank-col { text-align: center; width: 52px; }
+    thead th.drag-col { width: 36px; }
+
+    tbody tr {
+      border-bottom: 1px solid #e8edf2;
+      cursor: grab;
+      transition: background 0.08s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f5f8ff; }
+    tbody tr.not-found { background: #fff3f0; border-left: 4px solid #e53935; }
+    tbody tr.not-found:hover { background: #ffe5e0; }
+    tr.unranked-divider td {
+      background: #c62828;
+      color: #fff;
+      text-align: center;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 5px 12px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      cursor: default;
+      border-bottom: none;
+    }
+    tr.unranked-divider:hover { background: inherit; }
+    tbody tr.dragging { opacity: 0.35; cursor: grabbing; }
+    tbody tr.drag-above { box-shadow: inset 0 3px 0 #0055cc; }
+    tbody tr.drag-below { box-shadow: inset 0 -3px 0 #0055cc; }
+
+    td { padding: 10px 12px; vertical-align: top; font-size: 13px; line-height: 1.4; }
+    td.rank-num { text-align: center; font-weight: 700; color: #003366; font-size: 15px; vertical-align: middle; cursor: pointer; }
+    td.rank-num:hover { color: #0055cc; text-decoration: underline dotted; }
+    .rank-input {
+      width: 50px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: #003366;
+      border: 2px solid #0055cc;
+      border-radius: 5px;
+      padding: 2px 0;
+      outline: none;
+      background: #e8f0fe;
+    }
+    /* hide number spinner arrows */
+    .rank-input::-webkit-inner-spin-button,
+    .rank-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .rank-input[type=number] { -moz-appearance: textfield; }
+    td.drag-handle { text-align: center; font-size: 20px; color: #bbb; vertical-align: middle; user-select: none; }
+    td.num-col { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; vertical-align: middle; }
+    td.na { color: #bbb; font-style: italic; }
+    .inst-name { font-weight: 600; color: #003366; }
+    .prog-name { color: #555; font-size: 12px; margin-top: 2px; }
+    .tag {
+      display: inline-block;
+      font-size: 10px; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px;
+      margin-left: 6px; vertical-align: middle;
+    }
+    .tag-notfound  { background: #e53935; color: #fff; }
+    .tag-altquota  { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; }
+
+    /* ── footer ── */
+    footer {
+      background: #fff;
+      border-top: 1px solid #ddd;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+    }
+    footer .foot-opts { display: flex; gap: 16px; flex-wrap: wrap; }
+    footer label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; cursor: pointer; white-space: nowrap;
+    }
+    .footer-btns { display: flex; gap: 10px; margin-left: auto; }
+    #copyBtn {
+      padding: 9px 18px;
+      background: #e8edf2; color: #333;
+      border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    #copyBtn:hover { background: #d5dce4; }
+    #confirmBtn {
+      padding: 9px 22px;
+      background: #1a6b3c; color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      min-width: 190px;
+    }
+    #confirmBtn:hover { background: #145530; }
+    #confirmBtn:disabled { background: #999; cursor: default; }
+    #resetBtn {
+      padding: 9px 16px;
+      background: #b71c1c; color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      white-space: nowrap;
+    }
+    #resetBtn:hover { background: #7f0000; }
+    #resetBtn:disabled { background: #999; cursor: default; }
+
+    /* ── toast ── */
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 76px; left: 50%;
+      transform: translateX(-50%);
+      background: #1a6b3c; color: #fff;
+      padding: 10px 22px; border-radius: 6px;
+      font-weight: 700; font-size: 14px;
+      z-index: 100;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+      white-space: nowrap;
+    }
+    #toast.error { background: #b00020; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>JoSAA Choice Ranker</h1>
+  <span id="choiceCount"></span>
+</header>
+
+<div class="filter-bar">
+  <label for="filterRankType">Rank Type</label>
+  <select id="filterRankType">
+    <option value="OPEN||Gender-Neutral">General – Gender-Neutral</option>
+    <option value="OPEN||Female-only (including Supernumerary)">General – Girls</option>
+    <option value="OBC-NCL||Gender-Neutral">OBC-NCL – Gender-Neutral</option>
+    <option value="OBC-NCL||Female-only (including Supernumerary)">OBC-NCL – Girls</option>
+    <option value="EWS||Gender-Neutral">EWS – Gender-Neutral</option>
+    <option value="EWS||Female-only (including Supernumerary)">EWS – Girls</option>
+    <option value="SC||Gender-Neutral">SC – Gender-Neutral</option>
+    <option value="SC||Female-only (including Supernumerary)">SC – Girls</option>
+    <option value="ST||Gender-Neutral">ST – Gender-Neutral</option>
+    <option value="ST||Female-only (including Supernumerary)">ST – Girls</option>
+    <option value="OPEN (PwD)||Gender-Neutral">PwD – General</option>
+    <option value="OBC-NCL (PwD)||Gender-Neutral">PwD – OBC-NCL</option>
+    <option value="EWS (PwD)||Gender-Neutral">PwD – EWS</option>
+    <option value="SC (PwD)||Gender-Neutral">PwD – SC</option>
+    <option value="ST (PwD)||Gender-Neutral">PwD – ST</option>
+  </select>
+
+  <label for="filterQuota">Quota</label>
+  <select id="filterQuota">
+    <option value="AI">AI – All India</option>
+    <option value="HS">HS – Home State</option>
+    <option value="OS">OS – Other State</option>
+    <option value="GO">GO – Goa</option>
+    <option value="JK">JK – J&amp;K</option>
+    <option value="LA">LA – Ladakh</option>
+  </select>
+
+  <button id="applyBtn">Apply</button>
+  <span id="matchCount"></span>
+</div>
+
+<div class="help-bar">
+  Click a rank number to jump an entry to a specific position &nbsp;&middot;&nbsp; Drag rows to reorder &nbsp;&middot;&nbsp; Sorted by closing rank &nbsp;&middot;&nbsp;
+  <span style="background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;padding:0 4px;border-radius:3px;font-weight:700;font-size:11px">OS/HS</span> = rank from a different quota (hover for details) &nbsp;&middot;&nbsp;
+  <span style="color:#c62828;font-weight:700">Red rows</span> = not in rank data at all
+</div>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <span id="loadingMsg">Loading rank data…</span>
+</div>
+
+<main id="mainContent" style="display:none">
+  <table id="rankTable">
+    <thead>
+      <tr>
+        <th class="rank-col">#</th>
+        <th class="drag-col"></th>
+        <th>Institute &amp; Program</th>
+        <th class="num-col">Opening Rank</th>
+        <th class="num-col">Closing Rank</th>
+      </tr>
+    </thead>
+    <tbody id="rankBody"></tbody>
+  </table>
+</main>
+
+<footer>
+  <div class="foot-opts">
+    <label><input type="checkbox" id="autoAccept" checked /> Auto-accept restriction dialogs</label>
+    <label><input type="checkbox" id="clearExisting" /> Clear existing choices first</label>
+  </div>
+  <div class="footer-btns">
+    <button id="resetBtn">&#10005; Reset All</button>
+    <button id="copyBtn">&#128203; Copy List</button>
+    <button id="confirmBtn">&#9654; Confirm &amp; Fill Choices</button>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script src="ranker.js"></script>
+</body>
+</html>

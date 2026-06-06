@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk -F',' 'NR>1 {print $5}' /home/anshulasawa/projects/councelling-filler/ranks.csv)",
+      "Bash(awk -F',' 'NR>1 {print $6}' /home/anshulasawa/projects/councelling-filler/ranks.csv)",
+      "Bash(python3 *)",
+      "Bash(node *)"
+    ]
+  }
+}
