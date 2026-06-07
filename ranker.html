@@ -191,6 +191,24 @@
     .tag-notfound  { background: #e53935; color: #fff; }
     .tag-altquota  { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; }
 
+    /* ── row action buttons ── */
+    thead th.action-col { text-align: center; width: 72px; }
+    td.action-col { text-align: center; vertical-align: middle; white-space: nowrap; }
+    .action-btn {
+      background: none;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #666;
+      line-height: 1;
+      margin: 0 1px;
+    }
+    .action-btn:hover { background: #f0f0f0; border-color: #bbb; }
+    .btn-bottom:hover { background: #e8f0fe; border-color: #1a4a8a; color: #003366; }
+    .btn-remove:hover { background: #fde8e8; border-color: #e53935; color: #c62828; }
+
     /* ── footer ── */
     footer {
       background: #fff;
@@ -313,6 +331,7 @@
         <th>Institute &amp; Program</th>
         <th class="num-col">Opening Rank</th>
         <th class="num-col">Closing Rank</th>
+        <th class="action-col"></th>
       </tr>
     </thead>
     <tbody id="rankBody"></tbody>

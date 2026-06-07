@@ -282,11 +282,17 @@ function renderTable() {
       </td>
       <td class="num-col${orClass}">${escHtml(item.openingRankDisplay)}</td>
       <td class="num-col${orClass}">${escHtml(item.closingRankDisplay)}</td>
+      <td class="action-col">
+        <button class="action-btn btn-bottom" title="Move to bottom">&#8659;</button>
+        <button class="action-btn btn-remove" title="Remove">&#10005;</button>
+      </td>
     `;
 
     tr.querySelector('.rank-num').addEventListener('click', function () {
       startRankEdit(this, idx);
     });
+    tr.querySelector('.btn-bottom').addEventListener('click', () => moveToBottom(idx));
+    tr.querySelector('.btn-remove').addEventListener('click', () => removeItem(idx));
 
     tr.addEventListener('dragstart', onDragStart);
     tr.addEventListener('dragenter', onDragEnter);
@@ -301,6 +307,17 @@ function renderTable() {
 
 function escHtml(s) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function removeItem(idx) {
+  items.splice(idx, 1);
+  renderTable();
+}
+
+function moveToBottom(idx) {
+  const [item] = items.splice(idx, 1);
+  items.push(item);
+  renderTable();
 }
 
 // ─────────────────────────────────────────────
