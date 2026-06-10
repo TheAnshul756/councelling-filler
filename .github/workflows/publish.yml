@@ -51,7 +51,7 @@ jobs:
 
       - name: Publish to Chrome Web Store
         if: steps.ver.outputs.changed == 'true'
-        run: npx chrome-webstore-upload-cli@latest upload --auto-publish
+        run: npx chrome-webstore-upload-cli@latest upload --zip-path extension.zip --auto-publish
         env:
           CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
