@@ -1,9 +1,10 @@
 'use strict';
 
-let allCsvRows  = [];   // full parsed ranks.csv
-let pageChoices = [];   // raw choices from JoSAA page
-let items       = [];   // current displayed+ordered list
-let dragSrcIdx  = null;
+let allCsvRows    = [];   // full parsed ranks.csv
+let pageChoices   = [];   // raw choices from JoSAA page
+let items         = [];   // current displayed+ordered list
+let dragSrcIdx    = null;
+let preserveOrder = false; // true when opened from pasted list — skip auto-sort
 
 // ─────────────────────────────────────────────
 //  Init
@@ -12,14 +13,25 @@ let dragSrcIdx  = null;
 async function init() {
   // Restore stored options
   const stored = await chrome.storage.local.get(
-    ['pageChoices', 'josaaTabId', 'autoAccept', 'clearExisting']
+    ['pageChoices', 'josaaTabId', 'autoAccept', 'clearExisting', 'rankerNote', 'preserveOrder']
   );
-  pageChoices = stored.pageChoices || [];
+  pageChoices   = stored.pageChoices || [];
+  preserveOrder = !!stored.preserveOrder;
   if (stored.autoAccept    != null) document.getElementById('autoAccept').checked    = stored.autoAccept;
   if (stored.clearExisting != null) document.getElementById('clearExisting').checked = stored.clearExisting;
 
-  document.getElementById('choiceCount').textContent =
-    `${pageChoices.length} choice${pageChoices.length !== 1 ? 's' : ''} from page`;
+  const isFiltered = stored.rankerNote != null;
+  document.getElementById('choiceCount').textContent = isFiltered
+    ? `${pageChoices.length} from pasted list`
+    : `${pageChoices.length} choice${pageChoices.length !== 1 ? 's' : ''} from page`;
+
+  if (stored.rankerNote) {
+    const bar = document.querySelector('.help-bar');
+    const note = document.createElement('div');
+    note.style.cssText = 'margin-top:4px;color:#856404;font-weight:600;';
+    note.textContent = `⚠ ${stored.rankerNote}`;
+    bar.appendChild(note);
+  }
 
   // Load ranks CSV
   setLoading('Loading rank data…');
@@ -223,16 +235,19 @@ function applyFilters() {
 
   const matched = items.filter(i => i.found).length;
 
-  // Sort: found entries by closing rank asc; not-found at end
-  items.sort((a, b) => {
-    if (!a.found && !b.found) return 0;
-    if (!a.found) return 1;
-    if (!b.found) return -1;
-    if (a.closingRank === null && b.closingRank === null) return 0;
-    if (a.closingRank === null) return 1;
-    if (b.closingRank === null) return -1;
-    return a.closingRank - b.closingRank;
-  });
+  // Sort: found entries by closing rank asc; not-found at end.
+  // Skipped in preserveOrder mode (pasted list) — user's order is intentional.
+  if (!preserveOrder) {
+    items.sort((a, b) => {
+      if (!a.found && !b.found) return 0;
+      if (!a.found) return 1;
+      if (!b.found) return -1;
+      if (a.closingRank === null && b.closingRank === null) return 0;
+      if (a.closingRank === null) return 1;
+      if (b.closingRank === null) return -1;
+      return a.closingRank - b.closingRank;
+    });
+  }
 
   document.getElementById('matchCount').textContent =
     `${matched} of ${pageChoices.length} matched`;

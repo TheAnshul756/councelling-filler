@@ -3,7 +3,22 @@
 document.getElementById('fillBtn').addEventListener('click', runFiller);
 document.getElementById('downloadBtn').addEventListener('click', runDownload);
 document.getElementById('rankBtn').addEventListener('click', openRanker);
+document.getElementById('rankFromListBtn').addEventListener('click', openRankerFromList);
 document.getElementById('resetBtn').addEventListener('click', runReset);
+
+// Show/hide "Rank Pasted List" button whenever textarea content changes
+document.getElementById('choiceInput').addEventListener('input', syncRankFromListBtn);
+function syncRankFromListBtn() {
+  const raw   = document.getElementById('choiceInput').value.trim();
+  const count = raw ? parseChoices(raw).length : 0;
+  const btn   = document.getElementById('rankFromListBtn');
+  if (count > 0) {
+    btn.style.display = 'block';
+    btn.textContent   = `⧻ Rank Pasted List (${count} entr${count === 1 ? 'y' : 'ies'})`;
+  } else {
+    btn.style.display = 'none';
+  }
+}
 
 // ─────────────────────────────────────────────
 //  Shared helpers
@@ -51,6 +66,8 @@ async function openRanker() {
       josaaTabId:    tab.id,
       autoAccept:    document.getElementById('autoAccept').checked,
       clearExisting: document.getElementById('clearExisting').checked,
+      rankerNote:    null,
+      preserveOrder: false,
     });
 
     chrome.tabs.create({ url: chrome.runtime.getURL('ranker.html') });
@@ -60,6 +77,91 @@ async function openRanker() {
 
   btn.disabled = false;
   btn.textContent = '⊹ Open Ranker';
+}
+
+// ─────────────────────────────────────────────
+//  Open Ranker — from pasted list only
+// ─────────────────────────────────────────────
+
+async function openRankerFromList() {
+  const raw    = document.getElementById('choiceInput').value.trim();
+  const pasted = parseChoices(raw);
+  if (!pasted.length) { openRanker(); return; }
+
+  const btn = document.getElementById('rankFromListBtn');
+  btn.disabled = true;
+  btn.textContent = 'Reading page…';
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const injected = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: pageExtractChoicesFunction,
+    });
+    const allPageChoices = injected[0].result;
+    if (!allPageChoices || !allPageChoices.length) {
+      alert('No available choices found on the page.\nMake sure you are on the JoSAA Choice Filling page.');
+      btn.disabled = false;
+      syncRankFromListBtn();
+      return;
+    }
+
+    // Match each pasted entry to its page choice (same Jaccard logic as pageFillerFunction)
+    function normText(s) {
+      return (s || '').toLowerCase().replace(/[,.()\-&]/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function choiceMatch(userInput, pageText, pageCode) {
+      const inp = normText(userInput), txt = normText(pageText);
+      if (userInput.trim() === (pageCode || '').trim()) return true;
+      if (txt.includes(inp)) return true;
+      const iW = new Set(inp.split(/\s+/).filter(w => w.length >= 3));
+      const tW = new Set(txt.split(/\s+/).filter(w => w.length >= 3));
+      if (!iW.size || !tW.size) return false;
+      let inter = 0;
+      for (const w of iW) if (tW.has(w)) inter++;
+      return inter / (iW.size + tW.size - inter) >= 0.90;
+    }
+
+    const seen       = new Set();
+    const pageChoices = [];
+    for (const paste of pasted) {
+      for (const pg of allPageChoices) {
+        const key = `${pg.instcd}||${pg.brcd}`;
+        if (seen.has(key)) continue;
+        if (choiceMatch(paste.institute, pg.institute, pg.instcd) &&
+            choiceMatch(paste.program,   pg.program,   pg.brcd)) {
+          pageChoices.push(pg);
+          seen.add(key);
+          break;
+        }
+      }
+    }
+
+    const unmatched = pasted.length - pageChoices.length;
+    if (!pageChoices.length) {
+      alert('None of the pasted entries matched any choice on the page.\nCheck that you are on the JoSAA Choice Filling page.');
+      btn.disabled = false;
+      syncRankFromListBtn();
+      return;
+    }
+
+    await chrome.storage.local.set({
+      pageChoices,
+      josaaTabId:    tab.id,
+      autoAccept:    document.getElementById('autoAccept').checked,
+      clearExisting: document.getElementById('clearExisting').checked,
+      rankerNote:    unmatched > 0
+        ? `${unmatched} pasted entr${unmatched === 1 ? 'y' : 'ies'} not found on page and excluded`
+        : null,
+      preserveOrder: true,
+    });
+    chrome.tabs.create({ url: chrome.runtime.getURL('ranker.html') });
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+
+  btn.disabled = false;
+  syncRankFromListBtn();
 }
 
 // ─────────────────────────────────────────────

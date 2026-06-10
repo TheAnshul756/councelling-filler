@@ -34,6 +34,7 @@
       margin-bottom: 10px;
       line-height: 1.5;
     }
+    .rank-btn-group { display: flex; flex-direction: column; gap: 6px; }
     #rankBtn {
       width: 100%;
       padding: 10px;
@@ -47,6 +48,20 @@
     }
     #rankBtn:hover { background: #541472; }
     #rankBtn:disabled { background: #999; cursor: default; }
+    #rankFromListBtn {
+      width: 100%;
+      padding: 8px 10px;
+      background: transparent;
+      color: #6a1a8b;
+      border: 2px solid #6a1a8b;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
+    }
+    #rankFromListBtn:hover { background: #f0e8f8; }
+    #rankFromListBtn:disabled { border-color: #aaa; color: #aaa; background: transparent; cursor: default; }
 
     /* ── divider ── */
     .divider {
@@ -198,7 +213,10 @@
       Reads every college from the JoSAA page, sorts them by closing rank,
       and opens a new tab where you can drag to reorder before filling.
     </div>
-    <button id="rankBtn">&#9783; Open Ranker</button>
+    <div class="rank-btn-group">
+      <button id="rankBtn">&#9783; Open Ranker</button>
+      <button id="rankFromListBtn">&#9783; Rank Pasted List</button>
+    </div>
   </div>
 
   <div class="divider">or fill manually</div>
