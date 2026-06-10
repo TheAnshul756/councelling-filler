@@ -10,6 +10,7 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: Chrome Web Store
     permissions:
       contents: write
 
